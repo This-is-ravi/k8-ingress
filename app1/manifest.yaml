@@ -1,0 +1,59 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: app1
+  # these labels are deployment related labels
+  labels:
+    app: app1
+    purpose: ingress
+spec:
+  selector:
+    matchLabels:
+      app: app1
+      purpose: ingress
+  # pod definition
+  template:
+    metadata:
+      labels:
+        app: app1
+        purpose: ingress
+    spec:
+      containers:
+      - name: app1
+        image: joindevops/app1:1.0
+---
+apiVersion: v1
+kind: Service #just giving cluster ip ,instead of classic LB
+metadata:
+  name: app1 #this is service name
+spec:
+  selector:
+    app: app1
+    purpose: ingress
+  ports:
+  - protocol: TCP
+    port: 80 #service-port
+    targetPort: 80 #target-port
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress #instead of classic LB use ingress resource is used to expose the app in the internet
+metadata:
+  name: app1
+  annotations: #is used for giving power to create ALB, now if we run this k8s cluster wil c that they have 
+    alb.ingress.kubernetes.io/scheme: internet-facing #set some annotion,like they need internet-facicing
+    alb.ingress.kubernetes.io/target-type: ip #with ip LB with som tags, now
+    alb.ingress.kubernetes.io/tags: Environment=dev,Team=test
+    alb.ingress.kubernetes.io/group.name: joindevops
+spec:
+  ingressClassName: alb
+  rules:
+  - host: "app1.daws78s.online" # ALB Rule,if someone req or hit this url,it should go to BE TG
+    http:
+      paths:
+      - pathType: Prefix
+        path: "/"
+        backend:
+          service:
+            name: app1 # ALB Target group
+            port:
+              number: 80
